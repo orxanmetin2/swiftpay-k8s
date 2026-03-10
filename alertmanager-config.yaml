@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-prometheus-kube-prometheus-alertmanager
+  namespace: monitoring
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['alertname', 'namespace']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 1h
+      receiver: 'telegram'
+
+    receivers:
+    - name: 'telegram'
+      telegram_configs:
+      - bot_token: '8708556138:AAFJPbdvILo5BADfFpHhfUleYwUu7GsnyKY'
+        chat_id: 1112839903
+        message: |
+          🚨 *SwiftPay Alert!*
+          Alert: {{ .GroupLabels.alertname }}
+          Namespace: {{ .CommonLabels.namespace }}
+          Severity: {{ .CommonLabels.severity }}
+          Summary: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+        parse_mode: 'Markdown'

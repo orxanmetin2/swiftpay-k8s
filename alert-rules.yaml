@@ -1,0 +1,62 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: swiftpay-alerts
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+  - name: node-alerts
+    rules:
+    - alert: HighCPUUsage
+      expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node CPU usage is above 80%!"
+
+    - alert: HighMemoryUsage
+      expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node memory usage is above 80%!"
+
+    - alert: DiskAlmostFull
+      expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 85
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Disk usage is above 85%!"
+
+  - name: pod-alerts
+    rules:
+    - alert: PodCrashLooping
+      expr: kube_pod_container_status_restarts_total{namespace="swiftpay"} > 3
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod is crash looping!"
+
+    - alert: PodNotRunning
+      expr: kube_pod_status_phase{namespace="swiftpay", phase!="Running"} == 1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod is not in Running state!"
+
+  - name: database-alerts
+    rules:
+    - alert: PostgreSQLDown
+      expr: kube_pod_status_phase{namespace="swiftpay", pod=~".*postgresql.*", phase!="Running"} == 1
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "PostgreSQL pod is down!"

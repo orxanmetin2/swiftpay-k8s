@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transfer-service
+  namespace: swiftpay
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: transfer-service
+  template:
+    metadata:
+      labels:
+        app: transfer-service
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "transfer-role"
+        vault.hashicorp.com/agent-inject-secret-db: "swiftpay/data/transfer-db"
+    spec:
+      serviceAccountName: transfer-serviceaccount
+      containers:
+      - name: transfer-service
+        image: kennethreitz/httpbin:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: DB_HOST
+          value: "transfer-postgresql.swiftpay.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "transferdb"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transfer-service
+  namespace: swiftpay
+spec:
+  selector:
+    app: transfer-service
+  ports:
+  - port: 4003
+    targetPort: 80
+  type: ClusterIP
